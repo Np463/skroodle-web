@@ -1,11 +1,19 @@
-import { useSelector } from "react-redux";
 import { Redirect } from "react-router";
+import socket from "../../api/socketClient";
+
+import "./Lobby.css"
 
 export default function Lobby() {
-	const lobbyId = useSelector((state) => state.lobby.lobbyId);
-
-	if (!lobbyId) {
+	if (!socket.connected) {
 		return <Redirect to={{ pathname: "/" }} />;
 	}
-	return <div>Lobby</div>;
+	return (
+		<div className="lobby-container">
+			<div className="box-container">
+				<div className="box">Players</div>
+				<div className="box">Settings</div>
+			</div>
+			<button className="start-button">Start</button>
+		</div>
+	);
 }
