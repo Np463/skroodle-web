@@ -1,28 +1,47 @@
 .lobby-container {
 	display: flex;
 	flex-direction: column;
+	margin-top: 4vh;
+	margin-bottom: 4vh;
 }
 
 .box-container {
 	display: flex;
+	padding-left: 2.5vw;
+	padding-right: 2.5vw;
 }
 
 .box {
-	background-color:burlywood;
-	height: 30em;
-	min-width: 42.5%;
+	background-color: burlywood;
+	height: 60vh;
+	min-width: 42.5vw;
+	margin: 3vh 2.5vw 3vh 2.5vw;
 }
 
-.box:first-child {
-	margin: 5% 2.5% 5% 5%
+.box-inner {
+	padding: 0 2vw;
 }
 
-.box:last-child {
-	margin: 5% 5% 5% 2.5%
-}
-
-.start-button {
-	width: 10em;
-	height: 4em;
+.menu-button {
+	width: auto;
+	min-width: 10vw;
+	height: 7vh;
 	margin: 0 auto;
+	font-size: 4vh;
+}
+
+.box-header {
+	font-size: 2rem;
+	text-align: center;
+	margin-top: 0.5em;
+}
+
+.players-list {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.player-badge {
+	font-size: 1.5rem;
+	margin: 1vh 2vw;
 }
