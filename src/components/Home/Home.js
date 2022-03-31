@@ -97,11 +97,11 @@ export default function Home() {
 						onChange={(e) => dispatch(setName(e.target.value))}
 					></input>
 					{lobbyId ? (
-						<button className="play-button" onClick={play}>
+						<button className="menu-button button-white-green" onClick={play}>
 							Join Game
 						</button>
 					) : (
-						<button className="play-button" onClick={play}>
+						<button className="menu-button button-white-green" onClick={play}>
 							Play
 						</button>
 					)}

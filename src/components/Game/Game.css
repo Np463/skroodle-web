@@ -1,0 +1,119 @@
+.game-container {
+	display: flex;
+	flex-direction: column;
+	margin: 4vh auto;
+	align-items: center;
+	width: max-content;
+}
+
+.game-row {
+	display: flex;
+	flex-direction: row;
+}
+
+.game-box {
+	background-color: #34495e;
+	color: #fff;
+	padding: 10px;
+}
+
+.game-top {
+	width: -webkit-fill-available;
+	border-radius: 10px 10px 0px 0px;
+	box-shadow: 0px 2px 2px #2c3e50;
+	z-index: 100;
+}
+
+.player-list {
+	min-width: 15vw;
+	border-radius: 0 0px 0px 10px;
+}
+
+.chat-container {
+	min-width: 15vw;
+	display: flex;
+	flex-direction: column;
+	border-radius: 0px 0 10px 0px;
+}
+
+.chat-container input {
+	margin: 0 auto;
+	width: 14vw;
+	background-color: #475e75;
+	border-radius: 5px;
+	border: none;
+	font-size: 1rem;
+	color: #fff;
+	padding: 6px;
+}
+
+.chat-container input:focus-visible {
+	border: none;
+	outline: none;
+}
+
+.chat-log {
+	flex-grow: 2;
+}
+
+canvas {
+	background-color: #fff;
+}
+
+.game-bottom {
+	display: flex;
+}
+
+.game-bottom > div {
+	width: auto;
+}
+
+.size-picker {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	background: transparent;
+	height: 100%;
+	width: 100%;
+}
+
+.size-picker > div {
+	width: 100px;
+	height: 25px;
+	cursor: pointer;
+	outline: none;
+	display: flex;
+	justify-content: center;
+	flex-direction: column;
+}
+
+.size-picker > div:hover {
+	outline: #fff solid 2px;
+}
+
+.size-picker > div.active {
+	outline: #fff solid 1px;
+	background-color: #475e75;
+}
+
+.size-picker > div > div {
+	background-color: #000;
+	line-height: 25px;
+	vertical-align: middle;
+}
+
+.size-picker-1 {
+	height: 2px;
+}
+
+.size-picker-2 {
+	height: 4px;
+}
+
+.size-picker-3 {
+	height: 8px;
+}
+
+.size-picker-4 {
+	height: 16px;
+}

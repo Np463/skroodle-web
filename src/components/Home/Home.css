@@ -10,17 +10,20 @@
 	margin: 5% 0;
 	min-width: 400px;
 	font-size: 1.5em;
+	color: #fff;
+	background-color: rgba(0, 0, 0, 0);
+	border: 2px #fff solid;
+	border-radius: 10px;
+	text-align: center;
 }
 
-.play-button {
-	margin: 5% 0;
-	padding: 10px 0;
-	min-width: 300px;
-	min-height: 30px;
-	font-size: 1.5em;
+.name-input:focus-visible {
+	border: 2px #fff solid;
+	outline: none;
 }
 
 .title {
 	margin: 5% 0;
 	font-size: 4em;
+	color: #fff;
 }
