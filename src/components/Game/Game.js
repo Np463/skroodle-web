@@ -63,7 +63,7 @@ export default function Game() {
 		// 	redraw();
 		// 	simplifyIndex.current++;
 		// }
-		if (isDrawing) {
+		if (isDrawing.current) {
 			points.current[points.current.length - 1] = poly_simplify(
 				points.current[points.current.length - 1],
 				1.5
@@ -74,6 +74,7 @@ export default function Game() {
 	}
 
 	function redraw() {
+		// const start = Date.now();
 		contextRef.current.clearRect(0, 0, 1000, 600);
 		const ctx = getContext();
 		for (let stroke of points.current) {
@@ -86,6 +87,7 @@ export default function Game() {
 				ctx.stroke();
 			}
 		}
+		// console.log("Draw time: " + (Date.now() - start) / 1000);
 	}
 
 	function handlePointerMove(e) {
