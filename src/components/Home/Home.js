@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useHistory, useLocation } from "react-router-dom";
-import { setName, setSessionId, setUserId } from "../../reducers/userSlice";
-import { setLobbyId } from "../../reducers/lobbySlice";
-import socket from "../../api/socketClient";
+import { setName, setSessionId, setUserId } from "reducers/userSlice";
+import { setLobbyId, setRounds, setSecondsPerRound } from "reducers/lobbySlice";
+import Loader from "components/Loader/Loader";
+import socket from "api/socketClient";
 
 import "./Home.css";
 
@@ -33,7 +34,7 @@ export default function Home() {
 		socket.on("connect", () => {});
 		socket.on("connect_error", (err) => {
 			setLobbyStatus("failed");
-			setErrorMessage(err.message);
+			setErrorMessage("Unable to connect to server");
 		});
 		socket.on("session", ({ sessionId, userId }) => {
 			socket.auth.sessionId = sessionId;
@@ -48,11 +49,16 @@ export default function Home() {
 				socket.emit("lobby:create", {});
 			}
 		});
-		socket.on("lobby:created", ({ roomId }) => {
-			setLobbyStatus("succeeded");
-			dispatch(setLobbyId(roomId));
-			history.push("/lobby");
-		});
+		socket.on(
+			"lobby:createdOrJoined",
+			({ roomId, rounds, secondsPerRound }) => {
+				setLobbyStatus("succeeded");
+				dispatch(setLobbyId(roomId));
+				dispatch(setRounds(rounds));
+				dispatch(setSecondsPerRound(secondsPerRound));
+				history.push("/lobby");
+			}
+		);
 		socket.on("lobby:error", ({ error }) => {
 			setLobbyStatus("failed");
 			setErrorMessage(error);
@@ -61,7 +67,7 @@ export default function Home() {
 			socket.off("connect");
 			socket.off("connect_error");
 			socket.off("session");
-			socket.off("lobby:created");
+			socket.off("lobby:createdOrJoined");
 			socket.off("lobby:error");
 		};
 	}, [dispatch, location, history]);
@@ -77,11 +83,11 @@ export default function Home() {
 	return (
 		<div className="screen">
 			{lobbyStatus === "loading" ? (
-				<div>
-					<h1>Loading...</h1>
+				<div className="loading-screen">
+					<Loader />
 				</div>
 			) : lobbyStatus === "failed" ? (
-				<div>
+				<div className="loading-screen">
 					<h1>{errorMessage}</h1>
 				</div>
 			) : (

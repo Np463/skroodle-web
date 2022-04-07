@@ -1,13 +1,32 @@
 import { useState, useRef, useEffect } from "react";
-import SizePicker from "./SizePicker";
+import { Redirect } from "react-router";
 import { CirclePicker } from "react-color";
-import { poly_simplify } from "../../util/simplify";
-import { colors } from "../../util/colors";
+import { useSelector, useDispatch } from "react-redux";
+import {
+	setGameState,
+	setWord,
+	setRound,
+	setMaxRound,
+	setDrawer,
+	setWordChoices,
+} from "reducers/gameSlice";
+import { setPlayers, addPlayer, removePlayer } from "reducers/lobbySlice";
+import socket from "api/socketClient";
+import SizePicker from "./SizePicker";
+import Loader from "components/Loader/Loader";
+import { poly_simplify } from "util/simplify";
+import { colors } from "util/colors";
 import "./Game.css";
 
 export default function Game() {
 	const [lineWidth, setLineWidth] = useState(2);
 	const [color, setColor] = useState("#000");
+	const [timer, setTimer] = useState(0);
+
+	const game = useSelector((state) => state.game);
+	const lobby = useSelector((state) => state.lobby);
+
+	const dispatch = useDispatch();
 
 	const canvasRef = useRef(null);
 	const contextRef = useRef(null);
@@ -17,15 +36,82 @@ export default function Game() {
 	const isDrawing = useRef(false);
 	const startPoint = useRef(null);
 	const canDraw = useRef(true);
-
-	// let points = [];
-	// let index = -1;
-	// let simplifyIndex = 0;
+	const countdownInterval = useRef(null);
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
-		contextRef.current = canvas.getContext("2d");
-	}, []);
+		contextRef.current = canvas?.getContext("2d");
+	});
+
+	useEffect(() => {
+		socket.emit("game:getState", lobby.lobbyId, (res) => {
+			console.log(res);
+			dispatch(setWord(res.word));
+			dispatch(setDrawer(res.drawer));
+			dispatch(setMaxRound(res.rounds));
+			dispatch(setRound(res.currentRound));
+			dispatch(setPlayers(res.players));
+			dispatch(setGameState(res.gameState));
+			countdownTimer(res.dueDate);
+		});
+		socket.on("game:choosingWord", ({ drawer, dueDate, round, gameState }) => {
+			countdownTimer(dueDate);
+			dispatch(setGameState(gameState));
+			dispatch(setDrawer(drawer));
+			dispatch(setRound(round));
+			dispatch(setWord(""));
+		});
+		socket.on("game:wordChoices", (wordChoices) => {
+			dispatch(setWordChoices(wordChoices));
+		});
+		socket.on("game:turnStart", ({ word, dueDate, gameState }) => {
+			dispatch(setWord(word));
+			dispatch(setGameState(gameState));
+			countdownTimer(dueDate);
+		});
+		socket.on("game:selectedWord", (word) => {
+			dispatch(setWord(word));
+		});
+		socket.on("game:turnEnd", ({ word, dueDate, gameState }) => {
+			dispatch(setWord(word));
+			dispatch(setGameState(gameState));
+			countdownTimer(dueDate);
+		});
+		socket.on("game:roundEnd", ({ dueDate, gameState }) => {
+			dispatch(setGameState(gameState));
+			countdownTimer(dueDate);
+		});
+		socket.on("game:gameEnd", ({ dueDate, gameState }) => {
+			dispatch(setGameState(gameState));
+			countdownTimer(dueDate);
+		});
+		return () => {
+			clearInterval(countdownInterval.current);
+			socket.off("game:choosingWord");
+			socket.off("game:wordChoices");
+			socket.off("game:turnStart");
+			socket.off("game:turnEnd");
+			socket.off("game:roundEnd");
+			socket.off("game:gameEnd");
+		};
+	}, [dispatch, lobby.lobbyId]);
+
+	function countdownTimer(dueDate) {
+		clearInterval(countdownInterval.current);
+		countdownInterval.current = setInterval(
+			(dueDate) => {
+				let remainingTime = dueDate - Date.now();
+				if (remainingTime <= 0) {
+					setTimer(0);
+					clearInterval(countdownInterval.current);
+					return;
+				}
+				setTimer(remainingTime);
+			},
+			250,
+			dueDate
+		);
+	}
 
 	function handlePointerDown(e) {
 		if (!canDraw.current) return;
@@ -47,22 +133,11 @@ export default function Game() {
 	function handleTouchDown(e) {
 		e.clientX = e.touches[0].clientX;
 		e.clientY = e.touches[0].clientY;
-		// console.log("TOUCH DOWN: " + e);
 		handlePointerDown(e);
 	}
 
 	function handlePointerUp(e) {
 		if (!canDraw.current) return;
-		// console.log("UP: " + e);
-		// simplify the last stroke
-		// if (simplifyIndex.current < points.current.length) {
-		// 	points.current[simplifyIndex.current] = poly_simplify(
-		// 		points.current[simplifyIndex.current],
-		// 		1.5
-		// 	);
-		// 	redraw();
-		// 	simplifyIndex.current++;
-		// }
 		if (isDrawing.current) {
 			points.current[points.current.length - 1] = poly_simplify(
 				points.current[points.current.length - 1],
@@ -84,8 +159,8 @@ export default function Game() {
 				ctx.strokeStyle = point[2];
 				ctx.lineWidth = point[3];
 				ctx.lineTo(point[0], point[1]);
-				ctx.stroke();
 			}
+			ctx.stroke();
 		}
 		// console.log("Draw time: " + (Date.now() - start) / 1000);
 	}
@@ -104,6 +179,7 @@ export default function Game() {
 			ctx.stroke();
 			points.current[index.current].push(point);
 			startPoint.current = point;
+			// console.log(points.current[index.current].length);
 		}
 	}
 
@@ -169,11 +245,59 @@ export default function Game() {
 		redraw();
 	}
 
+	if (!socket.connected) {
+		return <Redirect to={{ pathname: "/" }} />;
+	}
+
+	if (lobby.lobbyState === "loading") {
+		return (
+			<div className="game-container">
+				<Loader />
+				Loading...
+			</div>
+		);
+	}
+
 	return (
 		<div id="game" className="game-container">
-			<div className="game-top game-box">Top Bar</div>
+			<div className="game-top game-box">
+				<div className="timer">{Math.ceil(timer / 1000)}</div>
+				{game.gameState === 0 ? (
+					<div>Waiting for game to start</div>
+				) : game.gameState === 1 ? (
+					<div>Starting next round</div>
+				) : game.gameState === 2 ? (
+					<div>{`${game.drawer?.username} is choosing a word`}</div>
+				) : game.gameState === 5 ? (
+					<div>{`End of Round ${game.round}`}</div>
+				) : game.gameState === 6 ? (
+					<div>{`End of Round ${game.round}`}</div>
+				) : (
+					<div className="word">
+						{game.word.split("").map((l, i) =>
+							l === "_" ? (
+								<span className={"letter letter-underscore"} key={i}>
+									{" "}
+								</span>
+							) : (
+								<span className={"letter"} key={i}>
+									{l}
+								</span>
+							)
+						)}
+					</div>
+				)}
+				<div></div>
+			</div>
 			<div className="game-row">
-				<div className="player-list game-box">Players</div>
+				<div className="game-box side-column">
+					<h3>{`Round ${game.round} / ${game.maxRounds}`}</h3>
+					<div className="player-list">
+						{lobby.players.map((p, i) => (
+							<div key={i}>{p.username}</div>
+						))}
+					</div>
+				</div>
 				<canvas
 					height={600}
 					width={1000}
