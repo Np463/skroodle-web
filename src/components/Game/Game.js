@@ -25,6 +25,7 @@ export default function Game() {
 
 	const game = useSelector((state) => state.game);
 	const lobby = useSelector((state) => state.lobby);
+	const user = useSelector((state) => state.user);
 
 	const dispatch = useDispatch();
 
@@ -32,10 +33,9 @@ export default function Game() {
 	const contextRef = useRef(null);
 	const points = useRef([]);
 	const index = useRef(-1);
-	const simplifyIndex = useRef(0);
 	const isDrawing = useRef(false);
 	const startPoint = useRef(null);
-	const canDraw = useRef(true);
+	const canDraw = useRef(false);
 	const countdownInterval = useRef(null);
 
 	useEffect(() => {
@@ -65,14 +65,17 @@ export default function Game() {
 			dispatch(setWordChoices(wordChoices));
 		});
 		socket.on("game:turnStart", ({ word, dueDate, gameState }) => {
+			clearCanvas();
 			dispatch(setWord(word));
 			dispatch(setGameState(gameState));
 			countdownTimer(dueDate);
 		});
 		socket.on("game:selectedWord", (word) => {
+			canDraw.current = true;
 			dispatch(setWord(word));
 		});
 		socket.on("game:turnEnd", ({ word, dueDate, gameState }) => {
+			canDraw.current = false;
 			dispatch(setWord(word));
 			dispatch(setGameState(gameState));
 			countdownTimer(dueDate);
@@ -85,6 +88,32 @@ export default function Game() {
 			dispatch(setGameState(gameState));
 			countdownTimer(dueDate);
 		});
+		socket.on("game:addPoint", ({ existingStroke, newPoints }) => {
+			if (existingStroke.length > 0) {
+				if (points.current.length === 0) {
+					points.current.push([existingStroke]);
+				} else {
+					points.current[points.current.length - 1] =
+						points.current[points.current.length - 1].concat(existingStroke);
+				}
+			}
+			if (newPoints.length > 0) {
+				if (points.current.length === 0) {
+					points.current = [];
+				}
+				for (const pointArr of newPoints) {
+					points.current.push(pointArr);
+				}
+			}
+			redraw();
+		});
+		socket.on("game:clearCanvas", () => {
+			clearCanvas();
+		});
+		socket.on("game:undo", () => {
+			undo();
+			console.log(points.current);
+		});
 		return () => {
 			clearInterval(countdownInterval.current);
 			socket.off("game:choosingWord");
@@ -93,6 +122,9 @@ export default function Game() {
 			socket.off("game:turnEnd");
 			socket.off("game:roundEnd");
 			socket.off("game:gameEnd");
+			socket.off("game:addPoint");
+			socket.off("game:clearCanvas");
+			socket.off("game:undo");
 		};
 	}, [dispatch, lobby.lobbyId]);
 
@@ -115,7 +147,6 @@ export default function Game() {
 
 	function handlePointerDown(e) {
 		if (!canDraw.current) return;
-		// console.log("DOWN: " + e);
 		isDrawing.current = true;
 		const point = getPoint(e);
 		startPoint.current = point;
@@ -128,6 +159,11 @@ export default function Game() {
 		ctx.stroke();
 		index.current++;
 		points.current[index.current] = [point];
+		socket.emit("game:canvasDraw", {
+			roomId: lobby.lobbyId,
+			index: index.current,
+			point: point,
+		});
 	}
 
 	function handleTouchDown(e) {
@@ -138,13 +174,13 @@ export default function Game() {
 
 	function handlePointerUp(e) {
 		if (!canDraw.current) return;
-		if (isDrawing.current) {
-			points.current[points.current.length - 1] = poly_simplify(
-				points.current[points.current.length - 1],
-				1.5
-			);
-			redraw();
-		}
+		// if (isDrawing.current) {
+		// 	points.current[points.current.length - 1] = poly_simplify(
+		// 		points.current[points.current.length - 1],
+		// 		1.5
+		// 	);
+		// 	redraw();
+		// }
 		isDrawing.current = false;
 	}
 
@@ -167,7 +203,6 @@ export default function Game() {
 
 	function handlePointerMove(e) {
 		if (!canDraw.current) return;
-		// console.log("MOVE: " + e);
 		if (isDrawing.current) {
 			const ctx = getContext();
 			const point = getPoint(e);
@@ -179,14 +214,17 @@ export default function Game() {
 			ctx.stroke();
 			points.current[index.current].push(point);
 			startPoint.current = point;
-			// console.log(points.current[index.current].length);
+			socket.emit("game:canvasDraw", {
+				roomId: lobby.lobbyId,
+				index: index.current,
+				point: point,
+			});
 		}
 	}
 
 	function handleTouchMove(e) {
 		e.clientX = e.touches[0].clientX;
 		e.clientY = e.touches[0].clientY;
-		console.log("TOUCH MOVE: " + e);
 		handlePointerMove(e);
 	}
 
@@ -212,8 +250,11 @@ export default function Game() {
 	function clearCanvas() {
 		points.current = [];
 		index.current = -1;
-		simplifyIndex.current = 0;
 		contextRef.current.clearRect(0, 0, 1000, 600);
+	}
+
+	function handleClearCanvas() {
+		socket.emit("game:clearCanvas", lobby.lobbyId);
 	}
 
 	async function simplify() {
@@ -221,7 +262,6 @@ export default function Game() {
 		const ctx = getContext();
 		ctx.strokeStyle = "#F60";
 		let simplifiedPoints = points.map((p) => poly_simplify(p, 1.5));
-		console.log(simplifiedPoints);
 		for (let i = 0; i < simplifiedPoints.length; i++) {
 			ctx.beginPath();
 			ctx.moveTo(simplifiedPoints[i][0][0], simplifiedPoints[i][0][1]);
@@ -233,16 +273,23 @@ export default function Game() {
 		}
 	}
 
-	function logPoints() {
-		console.log(points.current);
-	}
-
 	function undo() {
 		points.current.pop();
 		if (index.current >= 0) {
 			index.current--;
 		}
 		redraw();
+	}
+
+	function handleUndo() {
+		if (points.current?.length === 0) return;
+		socket.emit("game:undo", lobby.lobbyId);
+	}
+
+	function onWordClick(e, i) {
+		e.stopPropagation();
+		e.preventDefault();
+		socket.emit("game:chooseWord", lobby.lobbyId, i);
 	}
 
 	if (!socket.connected) {
@@ -259,78 +306,96 @@ export default function Game() {
 	}
 
 	return (
-		<div id="game" className="game-container">
-			<div className="game-top game-box">
-				<div className="timer">{Math.ceil(timer / 1000)}</div>
-				{game.gameState === 0 ? (
-					<div>Waiting for game to start</div>
-				) : game.gameState === 1 ? (
-					<div>Starting next round</div>
-				) : game.gameState === 2 ? (
-					<div>{`${game.drawer?.username} is choosing a word`}</div>
-				) : game.gameState === 5 ? (
-					<div>{`End of Round ${game.round}`}</div>
-				) : game.gameState === 6 ? (
-					<div>{`End of Round ${game.round}`}</div>
-				) : (
-					<div className="word">
-						{game.word.split("").map((l, i) =>
-							l === "_" ? (
-								<span className={"letter letter-underscore"} key={i}>
-									{" "}
-								</span>
-							) : (
-								<span className={"letter"} key={i}>
-									{l}
-								</span>
-							)
-						)}
-					</div>
-				)}
-				<div></div>
-			</div>
-			<div className="game-row">
-				<div className="game-box side-column">
-					<h3>{`Round ${game.round} / ${game.maxRounds}`}</h3>
-					<div className="player-list">
-						{lobby.players.map((p, i) => (
-							<div key={i}>{p.username}</div>
+		<div>
+			{game.gameState === 2 && game.drawer?.userId === user.userId && (
+				<div className="modal-overlay">
+					<div className="modal-content">
+						{game.wordChoices.map((w, i) => (
+							<div
+								key={i}
+								onClick={(e) => onWordClick(e, i)}
+								className="modal-button"
+							>
+								{w}
+							</div>
 						))}
 					</div>
 				</div>
-				<canvas
-					height={600}
-					width={1000}
-					ref={canvasRef}
-					onMouseDown={handlePointerDown}
-					onMouseUp={handlePointerUp}
-					onMouseLeave={handlePointerUp}
-					onMouseOut={handlePointerUp}
-					onMouseMove={handlePointerMove}
-					onTouchMove={handleTouchMove}
-					onTouchStart={handleTouchDown}
-					onTouchEnd={handlePointerUp}
-				></canvas>
-				<div className="chat-container game-box">
-					<div className="chat-log">Chat</div>
-					<input></input>
+			)}
+			<div className="game-container">
+				<div className="game-top game-box">
+					<div className="timer">{Math.ceil(timer / 1000)}</div>
+					{game.gameState === 0 ? (
+						<div>Waiting for game to start</div>
+					) : game.gameState === 1 ? (
+						<div>Starting next round</div>
+					) : game.gameState === 2 ? (
+						<div>{`${game.drawer?.username} is choosing a word`}</div>
+					) : game.gameState === 5 ? (
+						<div>{`End of Round ${game.round}`}</div>
+					) : game.gameState === 6 ? (
+						<div>{`Winner ${game.round}`}</div>
+					) : (
+						<div className="word">
+							{game.word.split("").map((l, i) =>
+								l === "_" ? (
+									<span className={"letter letter-underscore"} key={i}>
+										{" "}
+									</span>
+								) : (
+									<span className={"letter"} key={i}>
+										{l}
+									</span>
+								)
+							)}
+						</div>
+					)}
+					<div></div>
 				</div>
-			</div>
-			<div className="game-bottom game-box">
-				<CirclePicker
-					color={color}
-					onChangeComplete={(c) => setColor(c.hex)}
-					colors={colors}
-					width={530}
-				/>
-				<SizePicker lineWidth={lineWidth} onChange={setLineWidth} />
-				<div>
-					<button>Erase</button>
-					<button onClick={clearCanvas}>Clear</button>
-					<button onClick={logPoints}>log points</button>
-					<button onClick={redraw}>redraw</button>
-					<button onClick={undo}>Undo</button>
+				<div className="game-row">
+					<div className="game-box side-column">
+						<h3>{`Round ${game.round} / ${game.maxRounds}`}</h3>
+						<div className="player-list">
+							{lobby.players.map((p, i) => (
+								<div key={i}>{p.username}</div>
+							))}
+						</div>
+					</div>
+					<canvas
+						height={600}
+						width={1000}
+						ref={canvasRef}
+						onMouseDown={handlePointerDown}
+						onMouseUp={handlePointerUp}
+						onMouseLeave={handlePointerUp}
+						onMouseOut={handlePointerUp}
+						onMouseMove={handlePointerMove}
+						onTouchMove={handleTouchMove}
+						onTouchStart={handleTouchDown}
+						onTouchEnd={handlePointerUp}
+					></canvas>
+					<div className="chat-container game-box">
+						<div className="chat-log">Chat</div>
+						<input></input>
+					</div>
 				</div>
+				{game.gameState === 3 && game.drawer?.userId === user.userId && (
+					<div className="game-bottom game-box">
+						<CirclePicker
+							color={color}
+							onChangeComplete={(c) => setColor(c.hex)}
+							colors={colors}
+							width={530}
+						/>
+						<SizePicker lineWidth={lineWidth} onChange={setLineWidth} />
+						<div>
+							<button>Erase</button>
+							<button onClick={handleClearCanvas}>Clear</button>
+							<button onClick={handleUndo}>Undo</button>
+						</div>
+					</div>
+				)}
+				<button onClick={() => console.log(points.current)}>Points</button>
 			</div>
 		</div>
 	);

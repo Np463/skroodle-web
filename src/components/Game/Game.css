@@ -1,3 +1,47 @@
+.modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: 200;
+	width: 0;
+	height: 100%;
+	width: 100%;
+}
+
+.modal-content {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	gap: 20px;
+	position: relative;
+	top: 10%;
+	background-color: #2c3e50f9;
+	margin: 0 22vw;
+	padding: 3vw 0;
+	border-radius: 20px;
+	box-shadow: #0d192bbb 0px 3px 10px;
+}
+
+.modal-button {
+	color: #fff;
+	background-color: #34495ecd;
+	border: #fff 2px solid;
+	border-radius: 20px;
+	width: 50vw;
+	height: 15vh;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	font-size: 3em;
+	font-weight: bold;
+	cursor: pointer;
+}
+
+.modal-button:hover {
+	background-color: #2c3e50;
+}
+
 .game-container {
 	display: flex;
 	flex-direction: column;
