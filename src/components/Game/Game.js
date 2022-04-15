@@ -387,7 +387,6 @@ export default function Game() {
 						/>
 						<SizePicker lineWidth={lineWidth} onChange={setLineWidth} />
 						<div>
-							<button>Erase</button>
 							<button onClick={handleClearCanvas}>Clear</button>
 							<button onClick={handleUndo}>Undo</button>
 						</div>
