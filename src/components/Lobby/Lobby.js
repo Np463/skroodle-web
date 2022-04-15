@@ -39,7 +39,6 @@ export default function Lobby() {
 			dispatch(setLobbyState("starting"));
 		});
 		socket.on("lobby:settingsUpdated", (settings) => {
-			console.log(settings);
 			if (settings.setting === "rounds") dispatch(setRounds(settings.value));
 			else if (settings.setting === "secondsPerRound")
 				dispatch(setSecondsPerRound(settings.value));

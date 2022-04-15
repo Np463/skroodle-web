@@ -45,7 +45,6 @@ export default function Game() {
 
 	useEffect(() => {
 		socket.emit("game:getState", lobby.lobbyId, (res) => {
-			console.log(res);
 			dispatch(setWord(res.word));
 			dispatch(setDrawer(res.drawer));
 			dispatch(setMaxRound(res.rounds));
@@ -112,7 +111,6 @@ export default function Game() {
 		});
 		socket.on("game:undo", () => {
 			undo();
-			console.log(points.current);
 		});
 		return () => {
 			clearInterval(countdownInterval.current);
@@ -395,7 +393,9 @@ export default function Game() {
 						</div>
 					</div>
 				)}
-				<button onClick={() => console.log(points.current)}>Points</button>
+				{process.env.NODE_ENV === "development" && (
+					<button onClick={() => console.log(points.current)}>Points</button>
+				)}
 			</div>
 		</div>
 	);
