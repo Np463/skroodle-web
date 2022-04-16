@@ -9,6 +9,9 @@ import {
 	setMaxRound,
 	setDrawer,
 	setWordChoices,
+	addChatMessage,
+	setTurnScores,
+	setScoreboard,
 } from "reducers/gameSlice";
 import { setPlayers, addPlayer, removePlayer } from "reducers/lobbySlice";
 import socket from "api/socketClient";
@@ -22,6 +25,7 @@ export default function Game() {
 	const [lineWidth, setLineWidth] = useState(2);
 	const [color, setColor] = useState("#000");
 	const [timer, setTimer] = useState(0);
+	const [chatInput, setChatInput] = useState("");
 
 	const game = useSelector((state) => state.game);
 	const lobby = useSelector((state) => state.lobby);
@@ -51,6 +55,7 @@ export default function Game() {
 			dispatch(setRound(res.currentRound));
 			dispatch(setPlayers(res.players));
 			dispatch(setGameState(res.gameState));
+			dispatch(setScoreboard(res.scoreboard));
 			countdownTimer(res.dueDate);
 		});
 		socket.on("game:choosingWord", ({ drawer, dueDate, round, gameState }) => {
@@ -73,12 +78,17 @@ export default function Game() {
 			canDraw.current = true;
 			dispatch(setWord(word));
 		});
-		socket.on("game:turnEnd", ({ word, dueDate, gameState }) => {
-			canDraw.current = false;
-			dispatch(setWord(word));
-			dispatch(setGameState(gameState));
-			countdownTimer(dueDate);
-		});
+		socket.on(
+			"game:turnEnd",
+			({ word, dueDate, gameState, turnScores, scoreboard }) => {
+				canDraw.current = false;
+				dispatch(setWord(word));
+				dispatch(setGameState(gameState));
+				dispatch(setTurnScores(turnScores));
+				dispatch(setScoreboard(scoreboard));
+				countdownTimer(dueDate);
+			}
+		);
 		socket.on("game:roundEnd", ({ dueDate, gameState }) => {
 			dispatch(setGameState(gameState));
 			countdownTimer(dueDate);
@@ -112,6 +122,9 @@ export default function Game() {
 		socket.on("game:undo", () => {
 			undo();
 		});
+		socket.on("game:sendChatMessage", (message) => {
+			dispatch(addChatMessage(message));
+		});
 		return () => {
 			clearInterval(countdownInterval.current);
 			socket.off("game:choosingWord");
@@ -123,6 +136,7 @@ export default function Game() {
 			socket.off("game:addPoint");
 			socket.off("game:clearCanvas");
 			socket.off("game:undo");
+			socket.off("game:sendChatMessage");
 		};
 	}, [dispatch, lobby.lobbyId]);
 
@@ -290,6 +304,15 @@ export default function Game() {
 		socket.emit("game:chooseWord", lobby.lobbyId, i);
 	}
 
+	function handleChatInput(e) {
+		if (e.key === "Enter") {
+			if (chatInput.trim() !== "") {
+				socket.emit("game:sendChatMessage", lobby.lobbyId, chatInput);
+				setChatInput("");
+			}
+		}
+	}
+
 	if (!socket.connected) {
 		return <Redirect to={{ pathname: "/" }} />;
 	}
@@ -320,6 +343,42 @@ export default function Game() {
 					</div>
 				</div>
 			)}
+			{game.gameState === 4 && (
+				<div className="modal-overlay">
+					<div className="canvas-overlay">
+						<div style={{ fontWeight: "normal" }}>
+							The word was:{" "}
+							<span style={{ fontWeight: "bold" }}>{game.word}</span>
+						</div>
+						{game.turnScores.map((t, i) => (
+							<div key={i}>
+								{t[0]}
+								{": "}
+								<span className={t[1] > 0 ? "text-green" : "text-red"}>
+									{`+${t[1]}`}
+								</span>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+			{game.gameState === 6 && (
+				<div className="modal-overlay">
+					<div className="canvas-overlay">
+						<div style={{ fontWeight: "normal" }}>Game Over</div>
+						{game.scoreboard
+							.slice()
+							.sort((a, b) => {
+								if (a[1] > b[1]) return -1;
+								else if (a[1] < b[1]) return 1;
+								else return 0;
+							})
+							.map((s, i) => (
+								<div key={i}>{`${i + 1}. ${s[0]} (${s[1]})`}</div>
+							))}
+					</div>
+				</div>
+			)}
 			<div className="game-container">
 				<div className="game-top game-box">
 					<div className="timer">{Math.ceil(timer / 1000)}</div>
@@ -332,7 +391,7 @@ export default function Game() {
 					) : game.gameState === 5 ? (
 						<div>{`End of Round ${game.round}`}</div>
 					) : game.gameState === 6 ? (
-						<div>{`Winner ${game.round}`}</div>
+						<div>Game Over</div>
 					) : (
 						<div className="word">
 							{game.word.split("").map((l, i) =>
@@ -354,8 +413,11 @@ export default function Game() {
 					<div className="game-box side-column">
 						<h3>{`Round ${game.round} / ${game.maxRounds}`}</h3>
 						<div className="player-list">
-							{lobby.players.map((p, i) => (
-								<div key={i}>{p.username}</div>
+							{game.scoreboard.map((s, i) => (
+								<div key={i}>
+									<div className="player-name">{s[0]}</div>
+									<div className="player-score">{s[1]}</div>
+								</div>
 							))}
 						</div>
 					</div>
@@ -373,8 +435,35 @@ export default function Game() {
 						onTouchEnd={handlePointerUp}
 					></canvas>
 					<div className="chat-container game-box">
-						<div className="chat-log">Chat</div>
-						<input></input>
+						<div className="chat-log">
+							{game.chatMessages
+								.slice()
+								.reverse()
+								.map((m, i) => (
+									<div key={i}>
+										{m.username && (
+											<span className="chat-username">{`${m.username}: `}</span>
+										)}
+										<span
+											className={
+												m.type === "correct_guess"
+													? "chat-message text-green"
+													: m.type === "server"
+													? "chat-message text-yellow"
+													: "chat-message"
+											}
+										>
+											{m.message}
+										</span>
+									</div>
+								))}
+						</div>
+						<input
+							onChange={(e) => setChatInput(e.target.value)}
+							onKeyDown={handleChatInput}
+							value={chatInput}
+							placeholder="Type your guess here"
+						></input>
 					</div>
 				</div>
 				{game.gameState === 3 && game.drawer?.userId === user.userId && (

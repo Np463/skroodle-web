@@ -9,6 +9,9 @@ export const gameSlice = createSlice({
 		maxRounds: 4,
 		drawer: null,
 		wordChoices: [],
+		chatMessages: [],
+		turnScores: [],
+		scoreboard: [],
 	},
 	reducers: {
 		setGameState: (state, action) => {
@@ -29,6 +32,15 @@ export const gameSlice = createSlice({
 		setWordChoices: (state, action) => {
 			state.wordChoices = action.payload;
 		},
+		addChatMessage: (state, action) => {
+			state.chatMessages.push(action.payload);
+		},
+		setTurnScores: (state, action) => {
+			state.turnScores = action.payload;
+		},
+		setScoreboard: (state, action) => {
+			state.scoreboard = action.payload;
+		},
 	},
 });
 
@@ -39,6 +51,9 @@ export const {
 	setMaxRound,
 	setDrawer,
 	setWordChoices,
+	addChatMessage,
+	setTurnScores,
+	setScoreboard,
 } = gameSlice.actions;
 
 export default gameSlice.reducer;
