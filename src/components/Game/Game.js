@@ -463,6 +463,7 @@ export default function Game() {
 							onKeyDown={handleChatInput}
 							value={chatInput}
 							placeholder="Type your guess here"
+							disabled={game.drawer?.userId === user.userId}
 						></input>
 					</div>
 				</div>
@@ -475,9 +476,19 @@ export default function Game() {
 							width={530}
 						/>
 						<SizePicker lineWidth={lineWidth} onChange={setLineWidth} />
-						<div>
-							<button onClick={handleClearCanvas}>Clear</button>
-							<button onClick={handleUndo}>Undo</button>
+						<div className="tool-buttons">
+							<button
+								className="tool-button button-white-green"
+								onClick={handleClearCanvas}
+							>
+								Clear
+							</button>
+							<button
+								className="tool-button button-white-green"
+								onClick={handleUndo}
+							>
+								Undo
+							</button>
 						</div>
 					</div>
 				)}

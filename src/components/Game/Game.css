@@ -275,3 +275,35 @@ canvas {
 .size-picker-4 {
 	height: 16px;
 }
+
+.tool-buttons {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-left: 20px;
+}
+
+.button-white-green {
+	border-radius: 10px;
+	background-color: #2c3e50;
+	border: 2px solid #fff;
+	color: #fff;
+}
+
+.button-white-green:hover {
+	border: 2px solid #2ecc71;
+	background-color: #2ecc71;
+}
+
+.button-white-green:active {
+	border: 2px solid #27ae60;
+	background-color: #27ae60;
+}
+
+.tool-button {
+	width: auto;
+	min-width: 3vw;
+	min-height: 2vh;
+	margin: 0 auto;
+	font-size: 1rem;
+}
