@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Redirect } from "react-router";
 import { useHistory } from "react-router-dom";
 import socket from "api/socketClient";
@@ -16,6 +16,8 @@ import {
 import "./Lobby.css";
 
 export default function Lobby() {
+	const [showRoomCode, setShowRoomCode] = useState(false);
+	const [anim, setAnim] = useState(0);
 	const lobby = useSelector((state) => state.lobby);
 	const user = useSelector((state) => state.user);
 	const dispatch = useDispatch();
@@ -52,6 +54,7 @@ export default function Lobby() {
 	}, [dispatch, history, lobby.lobbyId]);
 
 	function copyInviteLink() {
+		setAnim(1);
 		navigator.clipboard.writeText(
 			process.env.REACT_APP_BASE_URL + "?id=" + lobby.lobbyId
 		);
@@ -92,12 +95,22 @@ export default function Lobby() {
 	}
 	return (
 		<div className="lobby-container">
-			<button
-				className="menu-button button-white-green"
-				onClick={copyInviteLink}
-			>
-				Copy invite link
-			</button>
+			<div className="lobby-top-buttons">
+				<button
+					className="button-white-green"
+					onClick={() => setShowRoomCode(!showRoomCode)}
+				>
+					{showRoomCode ? lobby.lobbyId : "Show Room Code"}
+				</button>
+				<button
+					anim={anim}
+					onAnimationEnd={() => setAnim(0)}
+					className="button-white-green animate-text"
+					onClick={copyInviteLink}
+				>
+					{anim === 1 ? "Copied!" : "Copy Invite Link"}
+				</button>
+			</div>
 			<div className="box-container">
 				<div className="box">
 					<div className="box-inner">

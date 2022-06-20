@@ -5,6 +5,32 @@
 	margin-bottom: 4vh;
 }
 
+.lobby-top-buttons {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+}
+
+.lobby-top-buttons > button {
+	margin: 0 20px;
+	font-size: 2em;
+}
+
+.animate-text[anim="1"] {
+	animation-name: popup-fade;
+	animation-duration: 1.5s;
+}
+
+@keyframes popup-fade {
+	0% {
+		background-color: #34495e;
+	}
+	100% {
+		background-color: #2c3e50;
+	}
+}
+
 .box-container {
 	display: flex;
 	padding-left: 2.5vw;
