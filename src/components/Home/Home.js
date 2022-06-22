@@ -2,7 +2,12 @@ import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useHistory, useLocation } from "react-router-dom";
 import { setName, setSessionId, setUserId } from "reducers/userSlice";
-import { setLobbyId, setRounds, setSecondsPerRound } from "reducers/lobbySlice";
+import {
+	setLobbyId,
+	setRounds,
+	setSecondsPerRound,
+	setLobbyState,
+} from "reducers/lobbySlice";
 import Loader from "components/Loader/Loader";
 import socket from "api/socketClient";
 
@@ -51,12 +56,17 @@ export default function Home() {
 		});
 		socket.on(
 			"lobby:createdOrJoined",
-			({ roomId, rounds, secondsPerRound }) => {
+			({ roomId, rounds, secondsPerRound, inProgress }) => {
 				setLobbyStatus("succeeded");
 				dispatch(setLobbyId(roomId));
 				dispatch(setRounds(rounds));
 				dispatch(setSecondsPerRound(secondsPerRound));
-				history.push("/lobby");
+				if (inProgress) {
+					dispatch(setLobbyState("starting"));
+					history.push("/game");
+				} else {
+					history.push("/lobby");
+				}
 			}
 		);
 		socket.on("lobby:error", ({ error }) => {

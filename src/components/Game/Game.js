@@ -56,6 +56,13 @@ export default function Game() {
 			dispatch(setPlayers(res.players));
 			dispatch(setGameState(res.gameState));
 			dispatch(setScoreboard(res.scoreboard));
+			if (res.drawer?.userId === user.userId) {
+				canDraw.current = true;
+			}
+			if (res.canvasPoints.length > 0) {
+				points.current = points.current.concat(res.canvasPoints);
+				redraw();
+			}
 			countdownTimer(res.dueDate);
 		});
 		socket.on("game:choosingWord", ({ drawer, dueDate, round, gameState }) => {
